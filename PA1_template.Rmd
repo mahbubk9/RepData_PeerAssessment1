@@ -1,25 +1,104 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Assignment 1"
+author: "Mahbub khan"
+date: "April 6, 2016"
+output: html_document
 ---
 
 
-## Loading and preprocessing the data
+
+##Objective:
+This assignment analyses "activity monitoring data", looking at total numbers of activity each day and average daily activity pattern. It also looks at the effect of missing values and effect of imputing them by the mean activity rate.Lastly, it looks for pattern in activity divided into weekdays and weekends. 
+
+
+##Loading and Preprocessing data
+```{r, echo=TRUE}
+actvdata<-read.csv("./data/activity.csv",header = TRUE, sep = ",")#loading csv file from data folder of home drive
+str(actvdata)
+actvdata$date<-as.Date(actvdata$date)#formatting as date
+str(actvdata$date)
+```
+
+##Total Number of Steps per day
+
+
+```{r,}
+library(dplyr)#loading dplyr package
+bydate<-summarise(group_by(actvdata,date),totalsteps=sum(steps))#getting total steps by date
+head(bydate)
+
+
+hist(bydate$totalsteps)#making histogram of total steps by date
+mean(bydate$totalsteps,na.rm = TRUE)#mean of total stpes
+median(bydate$totalsteps,na.rm = TRUE)#median of total steps
+```
+
+##Average Daily Activity Pattern
+
+
+```{r,}
+intstepsdf<-actvdata[,c(3,1) ]#subsetting a datframe with interval and steps only
+head(intstepsdf)
+byinterval<-aggregate(.~interval, data=intstepsdf, mean)# mean steps by interval
+head(byinterval)
+plot(byinterval$steps~byinterval$interval,type="l")#plotting timeseries of mean steps
+byinterval[byinterval$steps==max(byinterval$steps),]#max mean step by interval
+
+```
+
+##Imputing Missing Values
+
+
+```{r,}
+sum(is.na(actvdata$steps))#total NA's
+
+
+for (i in 1:nrow(actvdata)){
+  if(is.na(actvdata$steps[i])){
+    actvdata$steps[i]<-round(byinterval[byinterval$interval==actvdata$interval[i],2])}}#replacing NA's of steps in actvdata with mean steps of same interval from byinterval df
+
+sum(is.na(actvdata$steps))#checking for NA's
+
+
+clnbydate<-summarise(group_by(actvdata,date),totalsteps=sum(steps))#getting total steps by date of NA imputed data
+
+hist(clnbydate$totalsteps)#histogram of cleaned steps
+mean(clnbydate$totalsteps)# mean of cleaned steps
+median(clnbydate$totalsteps)#median of cleaned steps
+
+```
+
+###Impact of Imputing Missing Data
+
+Looking at the two histograms we can see that, the middle bin of 10000 to 15000 is taller for the cleaned data, and this is due to inputting more values of that range instead of missing values. We also see that median and mean becomes same for cleaned data, this due to having a lot of values with mean value, hence median the middle value becomes one of them.
 
 
 
-## What is mean total number of steps taken per day?
+
+##Difference between Weekend and Weekday Activity Pattern
+```{r,}
+weekdays(clnbydate$date[1:10])#creating a new column "days"(Weekday & Weekend) in actvdata df
+for (i in 1:nrow(actvdata)){
+  if(weekdays(actvdata$date[i])=="Saturday"|weekdays(actvdata$date[i])=="Sunday"){
+    actvdata$days[i]<-"Weekend"}
+  else {actvdata$days[i]<-"Weekday"
+    
+  }
+}
+head(actvdata)
 
 
+intdayssteps<-summarise(group_by(actvdata,interval,days),meansteps=round(mean(steps)))#geting the mean steps for cleaned data
+head(intdayssteps)
+library(ggplot2)#loading ggplot2 package
 
-## What is the average daily activity pattern?
+p<- ggplot(intdayssteps, aes(x=interval, y=meansteps, color = days)) +
+  geom_line() +
+  facet_wrap(~days, ncol = 1, nrow=2)#creating the weekend/weekday activity timeseries
+print(p)#plotting it
 
 
+```
 
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+###Interpretation of the plot
+From the time series plots of activity for weekdays and weekends, we can see that the subject is more active during weekends, but the highest activity happens on a weekday.
